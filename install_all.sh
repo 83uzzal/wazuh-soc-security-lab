@@ -1,8 +1,8 @@
 #!/bin/bash
 # ============================================================
 # SOC Home Lab - One Command Installer (Production Grade)
-# Wazuh 4.14 + Suricata + Cowrie + YARA + ClamAV + Osquery
-# Ubuntu 22.04 / 24.04
+# Components: Wazuh 4.14 + Suricata + Cowrie + YARA + ClamAV + Osquery
+# OS: Ubuntu 22.04 / 24.04
 # ============================================================
 
 set -Eeuo pipefail
@@ -34,7 +34,14 @@ log "Updating system and installing basic packages"
 apt update -y
 apt install -y curl gnupg apt-transport-https \
                software-properties-common \
-               ca-certificates jq git python3 python3-venv python3-pip libssl-dev libffi-dev build-essential authbind
+               ca-certificates jq git python3 python3-venv python3-pip libssl-dev libffi-dev build-essential authbind dos2unix
+
+# --- Fix line endings and permissions for install_cowrie.sh if present ---
+if [[ -f ./install_cowrie.sh ]]; then
+    log "Fixing line endings and permissions for install_cowrie.sh"
+    dos2unix ./install_cowrie.sh
+    chmod +x ./install_cowrie.sh
+fi
 
 # ------------------------------------------------------------
 # Wazuh 4.14
@@ -97,6 +104,7 @@ install_osquery() {
     log "Installing Osquery"
     curl -L https://pkg.osquery.io/deb/osquery_5.20.0-1.linux_amd64.deb -o /tmp/osquery.deb
     dpkg -i /tmp/osquery.deb || apt -f install -y
+
     mkdir -p /etc/osquery
     cat <<EOF > /etc/osquery/osquery.conf
 {
@@ -113,6 +121,7 @@ install_osquery() {
   }
 }
 EOF
+
     systemctl enable osqueryd
     systemctl restart osqueryd
 }
