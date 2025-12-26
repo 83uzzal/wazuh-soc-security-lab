@@ -2,8 +2,6 @@
 set -e
 
 # --- Ensure script has correct Linux line endings ---
-sudo apt install -y dos2unix
-dos2unix "$0"
 
 echo "[+] Updating system packages..."
 sudo apt update -y
@@ -81,3 +79,4 @@ echo "[✓] Cowrie installation completed successfully!"
 echo "[✓] SSH Honeypot Port  : 2225"
 echo "[✓] Telnet Guest Port : 23"
 echo "[✓] Telnet Backend    : 2023"
+
