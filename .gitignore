@@ -9,3 +9,4 @@ suricata/rules/*.config
 *.key
 *.pem
 *.crt
+*.token
