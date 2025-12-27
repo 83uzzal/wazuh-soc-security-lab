@@ -27,23 +27,8 @@ A complete blue-team SOC & SIEM home lab for threat detection, malware analysis,
 
 
 📂 Repository Structure
-.
-├── install_all.sh                 # One-command full installation
-├── install_wazuh_suricata.sh      # Wazuh 4.14 + Suricata integration
-├── install_cowrie.sh              # Cowrie SSH honeypot
-├── install_yara_clamav.sh         # Malware detection
-├── install_osquery.sh             # Host telemetry
-│
-├── wazuh/
-│   ├── config/ossec.conf          # Example Wazuh config
-│   ├── rules/local_rules.xml      # Custom rules
-│   └── decoders/.gitkeep
-│
-├── suricata/
-│   ├── config/suricata.yaml       # Example config
-│   └── rules/.gitkeep             # Rules generated at runtime
-│
-└── .gitignore                     # Ignore logs, secrets, runtime files
+<img width="655" height="322" alt="image" src="https://github.com/user-attachments/assets/2fdb5c47-651a-4797-a874-981b0b840774" />
+
 
 
 🚀 One-Command Installation
