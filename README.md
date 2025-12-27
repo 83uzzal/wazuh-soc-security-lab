@@ -27,6 +27,8 @@ A complete blue-team SOC & SIEM home lab for threat detection, malware analysis,
 
 
 📂 Repository Structure
+
+
 <img width="655" height="322" alt="image" src="https://github.com/user-attachments/assets/2fdb5c47-651a-4797-a874-981b0b840774" />
 
 
