@@ -1,122 +1,136 @@
 #!/bin/bash
+# ============================================================
+# Cowrie Honeypot Installer
+# Repo: https://github.com/83uzzal/wazuh-soc-siem-suricata-yara-osquery-caldera-honeypot
+# OS  : Ubuntu 22.04 / 24.04
+# Author: Md. Alamgir Hasan
+# ============================================================
+
 set -Eeuo pipefail
 
-echo "[+] Cowrie Honeypot Installation Started"
+COWRIE_USER="cowrie"
+COWRIE_HOME="/home/${COWRIE_USER}"
+COWRIE_DIR="${COWRIE_HOME}/cowrie"
+VENV_DIR="${COWRIE_DIR}/cowrie-env"
 
-# -------------------------------------------------
+log() {
+    echo -e "[INFO] $1"
+}
+
+error() {
+    echo -e "[ERROR] $1" >&2
+    exit 1
+}
+
+# ------------------------------------------------------------
 # Root check
-# -------------------------------------------------
+# ------------------------------------------------------------
 if [[ $EUID -ne 0 ]]; then
-  echo "[ERROR] Run as root: sudo ./install_cowrie.sh"
-  exit 1
+    error "Run this script as root (sudo ./install_cowrie.sh)"
 fi
 
-# System auto-update & upgrade
-log "Updating and upgrading Ubuntu automatically"
+log "Starting Cowrie Honeypot installation..."
+
+# ------------------------------------------------------------
+# System update
+# ------------------------------------------------------------
+log "Updating system packages"
 apt update -y
 apt upgrade -y
-apt autoremove -y
-log "System update & upgrade completed"
 
-# -------------------------------------------------
-# System update & dependencies
-# -------------------------------------------------
-echo "[+] Updating system and installing dependencies..."
-apt update -y
-apt install -y git python3 python3-venv python3-pip \
-               libssl-dev libffi-dev build-essential authbind
+# ------------------------------------------------------------
+# Install dependencies
+# ------------------------------------------------------------
+log "Installing dependencies"
+apt install -y \
+    git \
+    python3 \
+    python3-pip \
+    python3-venv \
+    python3-minimal \
+    libssl-dev \
+    libffi-dev \
+    libpython3-dev \
+    build-essential \
+    authbind
 
-# -------------------------------------------------
-# Create cowrie user (no shell, no sudo)
-# -------------------------------------------------
-echo "[+] Creating cowrie user..."
-id cowrie &>/dev/null || adduser --disabled-password --gecos "" cowrie
-
-# -------------------------------------------------
-# Clone Cowrie
-# -------------------------------------------------
-echo "[+] Installing Cowrie..."
-cd /opt
-if [[ -d cowrie ]]; then
-  echo "[i] Cowrie already exists, skipping clone"
+# ------------------------------------------------------------
+# Create Cowrie user
+# ------------------------------------------------------------
+if id "${COWRIE_USER}" &>/dev/null; then
+    log "User '${COWRIE_USER}' already exists"
 else
-  git clone https://github.com/cowrie/cowrie.git
+    log "Creating Cowrie user"
+    adduser --disabled-password --gecos "" "${COWRIE_USER}"
 fi
 
-chown -R cowrie:cowrie /opt/cowrie
+# ------------------------------------------------------------
+# Switch to Cowrie user for installation
+# ------------------------------------------------------------
+log "Installing Cowrie as ${COWRIE_USER}"
 
-# -------------------------------------------------
+sudo -u "${COWRIE_USER}" bash <<EOF
+set -Eeuo pipefail
+
+log() {
+    echo -e "[COWRIE] \$1"
+}
+
+cd "${COWRIE_HOME}"
+
+# ------------------------------------------------------------
+# Clone Cowrie
+# ------------------------------------------------------------
+if [[ -d "${COWRIE_DIR}" ]]; then
+    log "Cowrie repository already exists"
+else
+    log "Cloning Cowrie repository"
+    git clone https://github.com/cowrie/cowrie.git
+fi
+
+cd cowrie
+
+# ------------------------------------------------------------
 # Python virtual environment
-# -------------------------------------------------
-echo "[+] Setting up Python virtual environment..."
-sudo -u cowrie python3 -m venv /opt/cowrie/cowrie-env
-sudo -u cowrie /opt/cowrie/cowrie-env/bin/pip install --upgrade pip setuptools wheel
-sudo -u cowrie /opt/cowrie/cowrie-env/bin/pip install -r /opt/cowrie/requirements.txt
+# ------------------------------------------------------------
+if [[ ! -d "${VENV_DIR}" ]]; then
+    log "Creating Python virtual environment"
+    python3 -m venv cowrie-env
+fi
 
-# -------------------------------------------------
-# Cowrie configuration
-# -------------------------------------------------
-echo "[+] Configuring Cowrie..."
-sudo -u cowrie cp -n /opt/cowrie/etc/cowrie.cfg.dist /opt/cowrie/etc/cowrie.cfg
+source cowrie-env/bin/activate
 
-sudo -u cowrie sed -i \
-  's|#listen_endpoints = tcp:2222:interface=0.0.0.0|listen_endpoints = tcp:2225:interface=0.0.0.0|' \
-  /opt/cowrie/etc/cowrie.cfg
+# ------------------------------------------------------------
+# Install Python dependencies
+# ------------------------------------------------------------
+log "Upgrading pip"
+python -m pip install --upgrade pip
 
-sudo -u cowrie sed -i 's|#enabled = true|enabled = true|' /opt/cowrie/etc/cowrie.cfg
+log "Installing Cowrie"
+python -m pip install -e .
 
-cat <<EOF | sudo -u cowrie tee -a /opt/cowrie/etc/cowrie.cfg
-[telnet]
-enabled = true
-guest_telnet_port = 23
-backend_telnet_port = 2023
+# ------------------------------------------------------------
+# Configure Cowrie
+# ------------------------------------------------------------
+if [[ ! -f etc/cowrie.cfg ]]; then
+    log "Creating cowrie.cfg"
+    cp etc/cowrie.cfg.dist etc/cowrie.cfg
+fi
+
+log "Enabling Telnet support"
+sed -i '/^\[telnet\]/,/^\[/{s/^enabled *=.*/enabled = true/}' etc/cowrie.cfg
+
+# ------------------------------------------------------------
+# Start Cowrie
+# ------------------------------------------------------------
+log "Starting Cowrie"
+source cowrie-env/bin/activate
+cowrie start
+
+log "Checking Cowrie status"
+cowrie status
 EOF
 
-# -------------------------------------------------
-# Authbind for port 23
-# -------------------------------------------------
-echo "[+] Configuring authbind..."
-touch /etc/authbind/byport/23
-chown cowrie:cowrie /etc/authbind/byport/23
-chmod 500 /etc/authbind/byport/23
-
-# -------------------------------------------------
-# Systemd service (CORRECT EXEC PATH)
-# -------------------------------------------------
-echo "[+] Creating systemd service..."
-cat <<EOF > /etc/systemd/system/cowrie.service
-[Unit]
-Description=Cowrie SSH/Telnet Honeypot
-After=network.target
-
-[Service]
-User=cowrie
-Group=cowrie
-WorkingDirectory=/opt/cowrie
-ExecStart=/usr/bin/authbind --deep /opt/cowrie/bin/cowrie start -n
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-# -------------------------------------------------
-# Start service
-# -------------------------------------------------
-echo "[+] Starting Cowrie..."
-systemctl daemon-reload
-systemctl enable cowrie
-systemctl restart cowrie
-
-# -------------------------------------------------
-# Status
-# -------------------------------------------------
-systemctl status cowrie --no-pager
-
-echo "================================================="
-echo "✅ Cowrie installation completed successfully!"
-echo " SSH Honeypot Port : 2225"
-echo " Telnet Port      : 23"
-echo " Cowrie Path      : /opt/cowrie"
-echo "================================================="
-
+log "Cowrie installation completed successfully"
+log "SSH Honeypot  : Port 2222"
+log "Telnet Honeypot: Port 2223"
