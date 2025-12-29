@@ -29,7 +29,7 @@ Ubuntu Server 22.04 / 24.04
 🔹 Install everything
 
 
-git clone https://github.com/83uzzal/wazuh-soc-siem-suricata-yara-osquery-caldera-honeypot.git
+git clone https://github.com/83uzzal/wazuh-soc-security-lab.git
 
 cd wazuh-soc-siem-suricata-yara-osquery-caldera-honeypot
 
