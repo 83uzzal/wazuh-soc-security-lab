@@ -168,11 +168,14 @@ Description=Cowrie SSH/Telnet Honeypot
 After=network.target
 
 [Service]
+Type=forking
 User=cowrie
-Group=cowrie
-WorkingDirectory=/opt/cowrie
-ExecStart=/usr/bin/authbind --deep /opt/cowrie/cowrie-env/bin/cowrie start -n
-Restart=always
+WorkingDirectory=/home/cowrie/cowrie
+Environment="PATH=/home/cowrie/cowrie/cowrie-env/bin:/usr/bin:/bin"
+ExecStart=/home/cowrie/cowrie/cowrie-env/bin/cowrie start
+ExecStop=/home/cowrie/cowrie/cowrie-env/bin/cowrie stop
+PIDFile=/home/cowrie/cowrie/var/run/cowrie.pid
+Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target
