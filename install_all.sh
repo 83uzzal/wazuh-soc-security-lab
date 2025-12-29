@@ -162,24 +162,7 @@ install_cowrie() {
     chmod 500 /etc/authbind/byport/23
 
     # Systemd service
-    cat <<EOF > /etc/systemd/system/cowrie.service
-[Unit]
-Description=Cowrie SSH/Telnet Honeypot
-After=network.target
 
-[Service]
-Type=forking
-User=cowrie
-WorkingDirectory=/home/cowrie/cowrie
-Environment="PATH=/home/cowrie/cowrie/cowrie-env/bin:/usr/bin:/bin"
-ExecStart=/home/cowrie/cowrie/cowrie-env/bin/cowrie start
-ExecStop=/home/cowrie/cowrie/cowrie-env/bin/cowrie stop
-PIDFile=/home/cowrie/cowrie/var/run/cowrie.pid
-Restart=on-failure
-
-[Install]
-WantedBy=multi-user.target
-EOF
 
     systemctl daemon-reload
     systemctl enable cowrie
